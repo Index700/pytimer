@@ -13,8 +13,9 @@ minitimer [-m minutes] [-s second] [-n repeat] [-r size] [-o]
 -r size : the size of timer window (s/m/l) 
 ```
 # Install
+```bash
 git clone https://github.com/Index700/pytimer
 cd pytimer
 pip3 install -r requirements.txt
-
+```
 
