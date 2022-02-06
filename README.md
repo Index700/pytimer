@@ -3,7 +3,7 @@
 簡単なタイマーです。
 
 # Screenshot
-https://github.com/Index700/pytimer/figure/screenshot.png
+https://github.com/Index700/pytimer/blob/main/figure/screen.png
 
 # Usage
 minitimer [-m minutes] [-s second] [-n repeat] [-r size] [-o]
