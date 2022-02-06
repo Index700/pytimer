@@ -4,7 +4,7 @@
 
 # Screenshot
 https://github.com/Index700/pytimer/blob/main/figure/screen.png
-![screenshot](https://raw.githubusercontent.com/main/figure/screen.png)
+![screenshot](./figure/screen.png)
 # Usage
 minitimer [-m minutes] [-s second] [-n repeat] [-r size] [-o]
 -m minutes: minutes of timer
