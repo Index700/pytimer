@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+#
+#
+# Copyright (c) 2021, Keita Kitaura
+# All rights reserved.
+# WRITESTAMP(())	    
+# $Id: $
+#
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1' # pygameの初期メッセージを非表示
+
+import pygame,time, sys
+from perlcompat import getopts,die
+from pygame.locals import*
+
+def usage():
+    die("""\
+usage: {} [-m minutes] [-s second] [-n repeat] [-r size] [-o]
+  -m minutes: minutes of timer
+  -s second: second of timer
+  -n repeat : the number of repeat 
+  -r size : the size of timer window (s/m/l) 
+
+""".format(sys.argv[0]))
+        
+class Timer:
+    def __init__(self, minutes, seconds, repeat):        
+        self.time_one_repeat = minutes * 60 + seconds # 1ループごとの時間
+        self.time_total = self.time_one_repeat * repeat # 全ての時間
+        self.minutes, self.seconds = self.sec2min(minutes, seconds)
+        self.repeat = repeat # 全ループ回数
+        self.count_repeat = 1 # 現在のループ回数
+        self.time_now = 0 # 現在の時間、ループごとにリセット
+        self.end = False # 終了判定
+        self.end_one_repeat = False # リピートの終了判定
+        
+    def update(self):
+        # 次の秒、エンドの判定を行う
+        self.time_now += 1        
+        if self.time_now > self.time_one_repeat: # 一回のリピートの終了判定
+            self.end_one_repeat = True
+            self.count_repeat += 1
+            self.time_now = 1
+            if self.count_repeat > self.repeat: # 全体の終了判定
+                self.end = True
+                self.time_now -= 1        
+        else:
+            self.end_one_repeat = False
+
+    def sec2min(self, minutes, seconds):
+        min_tmp = seconds // 60
+        minutes = min_tmp + minutes
+        seconds = seconds % 60
+        return minutes, seconds
+        
+class Monitor:
+    def __init__(self, width, height):
+        self.width = int(width) # ウィンドウの横の長さ
+        self.height = int(height) # ウィンドウの縦の長さ
+        self.x = int(self.width / 10) # 横軸の基準
+        self.y = int(self.height / 10) # 縦軸の基準
+        
+        pygame.init()
+        screen_size = (self.width,self.height)
+        self.screen = pygame.display.set_mode(screen_size)
+
+        self.block = int(self.x * 8) # バーの長さ
+
+        self.back_color = (10,10,20) # 背景色
+        self.back_one_repeat_end_color = (100,100,130) # 1ループ終了時の背景色
+        self.back_end_color = (200,0,0) # タイマー終了時の背景色
+        
+    def show_text(self, string, relative_x=1, relative_y=1, rotate=1.0):
+        # 文字列の表示
+        x = int(self.x * relative_x)
+        y = int(self.y * relative_y)
+        font = pygame.font.SysFont("Somic Sans MS", int(self.width / 5.5 * rotate))
+        color = (255, 255, 255)
+        text = font.render(string, True, color)
+        self.screen.blit(text, (x, y))
+                        
+        
+        
+def get_number_shown(num):
+    if num < 10:
+            num = "0" + str(num)
+            
+    return str(num)
+
+def show_time(monitor, timer):
+    '''経過時間、残りループ数、終了 キーを表示する'''
+    repeat_show = min(timer.count_repeat, timer.repeat)
+    monitor.show_text(string=f"Repeat: {repeat_show} / {timer.repeat}", relative_y=5)
+    monitor.show_text(string='Type "q" to exit',relative_x=8 ,  relative_y=9.3, rotate=0.2)
+    if timer.end: # n 回のループ後の処理
+        monitor.show_text(string="Finished!!")
+
+    else:
+        min_show = timer.time_now // 60 # 表示する"分"
+        sec_show = timer.time_now - (60 * (min_show)) # 表示する"秒"
+
+        min_show = get_number_shown(min_show)
+        sec_show = get_number_shown(sec_show)
+        min_total_show = get_number_shown(timer.minutes)
+        sec_total_show = get_number_shown(timer.seconds)
+        # min_total_show = get_number_shown(timer.)
+        monitor.show_text(string=f"{min_show}:{sec_show}", rotate=1.5)
+        monitor.show_text(string=f"/ {min_total_show}:{sec_total_show}", relative_x=6, relative_y=3, rotate=0.7)
+
+        
+
+def update_bar(monitor, timer):
+    """バーの長さを更新する。"""
+    rotate = 1 / timer.time_total
+    time_now_in_all = timer.time_one_repeat * (timer.count_repeat - 1) + timer.time_now    
+    x_end = min (int(monitor.x * 8 * rotate * time_now_in_all), int(monitor.x * 8))
+    pygame.draw.rect(monitor.screen, (255,255,255), (monitor.x, monitor.y * 8, monitor.x * 8, monitor.y + 2)) # 全体のバー
+    pygame.draw.rect(monitor.screen, (0,255,0), (monitor.x, monitor.y * 8, x_end, monitor.y + 2)) # 経過時間のバー
+    
+def show_monitor(monitor, timer):
+    # タイマーを動かす
+    color = monitor.back_color
+    monitor.screen.fill(color)
+    while True:
+        show_time(monitor, timer)
+        update_bar(monitor, timer)
+        pygame.display.flip()
+        time.sleep(1)
+
+        timer.update()        
+        if timer.end == True:
+            color = monitor.back_end_color
+            
+        elif timer.end_one_repeat ==True:
+            color = monitor.back_one_repeat_end_color
+
+        else:
+            color = monitor.back_color
+
+        monitor.screen.fill(color)
+            
+        for event in pygame.event.get():
+            if event.type== pygame.KEYDOWN:
+                if event.key== pygame.K_q:
+                    pygame.quit()
+                    sys.exit()
+                  
+def main():
+    opt = getopts('m:s:n:r:') or usage()
+    minutes = int(opt.m) if opt.m else 0
+    seconds = int(opt.s)if opt.s else 0
+    repeat = int(opt.n) if opt.n else 1
+    scale = str(opt.r) if opt.r else "s"
+
+    if minutes == 0 and seconds == 0:
+        seconds = 60
+        
+    if scale == "s":
+        size="400x200"
+    elif scale == "m":
+        size = "800x400"
+    elif scale == "l":
+        size = "1600x800"
+                
+    width,height = size.split("x")
+    
+    monitor = Monitor(width, height)
+    timer = Timer(minutes, seconds, repeat)
+
+    show_monitor(monitor, timer)
+
+    
+if __name__ == "__main__":
+    main()
+
+
+
